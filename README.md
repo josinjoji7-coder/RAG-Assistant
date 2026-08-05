@@ -1,56 +1,86 @@
-##  PDF Question Answering Assistant using RAG
+## PDF Question Answering Assistant using RAG
 
-Name: Josin Joji
+Josin Joji
 MUID: josinjoji@mulearn
 
 ### Project Overview
 
 This project is a PDF Question Answering Application built using Retrieval-Augmented Generation (RAG).
-The application allows users to upload a PDF document and ask questions related to its content. The system reads the PDF, converts the text into smaller chunks, creates embeddings, stores them in a vector database, and retrieves relevant information to generate accurate answers using a Large Language Model.
-
-The application also maintains conversation history so users can ask follow-up questions naturally.
+The application allows users to upload a PDF document, understand its contents, and ask questions based on the uploaded document. The system retrieves relevant information from the PDF and uses a Large Language Model (LLM) to generate accurate, context-based answers.
+The application also maintains conversation history, allowing users to ask follow-up questions naturally.
 
 ### Technologies Used
 
-* Python - Programming language
-* LangChain - Framework for building LLM applications
-* PyPDFLoader - Loading and extracting text from PDF files
-* Sentence Transformers - Generating text embeddings
-* ChromaDB - Vector database for storing embeddings
-* Google Gemini API - Free LLM for generating answers
-* Gradio- Interactive user interface
-* python-dotenv - Managing environment variables
+Programming Language
+
+* Python
+
+Frontend
+
+* Streamlit
+
+RAG Framework
+
+* LangChain
+
+PDF Processing
+
+* PyPDFLoader
+
+Text Processing
+
+* Recursive Character Text Splitter
+
+Embedding Model
+
+* Sentence Transformers (`all-MiniLM-L6-v2`)
+
+Vector Database
+
+* ChromaDB
+
+Large Language Model
+
+* Google Gemini API (Free Tier)
+
+Environment Management
+
+* python-dotenv
 
 ### Memory Implementation
 
-Conversation memory is implemented using a chat history system.
+Conversation memory is implemented using Streamlit session state.
 
-The application stores previous user questions and assistant responses. This allows the assistant to understand follow-up questions based on previous conversations.
+The application stores:
+
+* Previous user questions
+* Previous assistant responses
+
+This helps the assistant understand the previous conversation and provide better responses for follow-up questions.
 
 Example:
 
-User: What is this document about?
+**User:** What is this document about?
 
-Assistant: This document explains a software license agreement.
+**Assistant:** This document explains a software agreement.
 
-User: Who created it?
+**User:** Who owns the software?
 
-Assistant: The document was created by Blackmagic Design.
+The assistant uses the previous conversation context to answer correctly.
 
 ### Challenges Faced
 
-* Managing compatibility between different LangChain versions
-* Setting up the Python virtual environment
-* Handling PDF text extraction and chunking
-* Connecting the Gemini API correctly
-* Understanding the complete RAG workflow
-* Managing vector storage using ChromaDB
+* Managing package compatibility between LangChain, Streamlit, and Gemini API.
+* Handling PDF text extraction and chunking.
+* Understanding how embeddings and vector databases work.
+* Managing conversation history for follow-up questions.
+* Deploying the application with required environment variables.
 
-## Future Improvements
+### Future Improvements
 
-* Add support for multiple PDF uploads
-* Add OCR support for scanned PDFs
-* Improve chat interface design
-* Add source citation for answers
-* Deploy the application with cloud hosting
-* Add user authentication
+* Support multiple PDF uploads.
+* Add PDF preview functionality.
+* Improve answer accuracy using advanced retrieval techniques.
+* Add user authentication.
+* Add source references with page numbers.
+* Deploy with cloud-based vector databases for scalability.

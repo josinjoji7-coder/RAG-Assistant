@@ -1,7 +1,7 @@
 import os
 import shutil
 
-import gradio as gr
+import streamlit as st
 
 from dotenv import load_dotenv
 
@@ -16,6 +16,14 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 load_dotenv()
 
+st.set_page_config(
+    page_title="PDF RAG Assistant",
+    page_icon="📚"
+)
+
+
+st.title("PDF Question Answering Assistant")
+
 
 # Gemini setup
 
@@ -24,42 +32,40 @@ llm = ChatGoogleGenerativeAI(
     google_api_key=os.getenv("GEMINI_API_KEY")
 )
 
+# Session memory
 
-# Global variables
+if "database" not in st.session_state:
+    st.session_state.database = None
 
-database = None
-chat_history = []
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
-
-# Create embeddings
+# Embedding model
 
 embeddings = HuggingFaceEmbeddings(
     model_name="all-MiniLM-L6-v2"
 )
 
+# PDF processing function
 
-
-def process_pdf(pdf_file):
-
-    global database
+def process_pdf(pdf_path):
 
     if os.path.exists("vectorstore"):
-        shutil.rmtree("vectorstore")
+        try:
+            shutil.rmtree("vectorstore")
+        except PermissionError:
+            pass
 
-
-    loader = PyPDFLoader(pdf_file)
+    loader = PyPDFLoader(pdf_path)
 
     documents = loader.load()
-
 
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
         chunk_overlap=100
     )
 
-
     chunks = splitter.split_documents(documents)
-
 
     database = Chroma.from_documents(
         chunks,
@@ -67,131 +73,124 @@ def process_pdf(pdf_file):
         persist_directory="vectorstore"
     )
 
+    return database
 
-    return "PDF processed successfully! You can ask questions now."
+# Upload PDF
 
+uploaded_file = st.file_uploader(
+    "Upload your PDF",
+    type="pdf"
+)
 
+if uploaded_file:
 
-def ask_question(question):
-
-    global chat_history
-
-
-    if database is None:
-        return "Please upload and process a PDF first."
-
-
-    results = database.similarity_search(
-        question,
-        k=3
-    )
+    pdf_path = "uploaded.pdf"
 
 
-    context = ""
-
-    for result in results:
-        context += result.page_content + "\n"
+    with open(pdf_path, "wb") as file:
+        file.write(uploaded_file.getbuffer())
 
 
-    history_text = ""
+    if st.button("Process PDF"):
 
-    for chat in chat_history:
-        history_text += (
-            "User: " + chat["question"] +
-            "\nAssistant: " + chat["answer"] +
-            "\n"
+        with st.spinner("Processing PDF..."):
+
+            st.session_state.database = process_pdf(
+                pdf_path
+            )
+
+        st.success(
+            "PDF processed successfully!"
         )
 
+# Question section
 
-    prompt = f"""
+question = st.text_input(
+    "Ask a question about the PDF"
+)
+
+if st.button("Get Answer"):
+
+
+    if st.session_state.database is None:
+
+        st.warning(
+            "Please upload and process a PDF first."
+        )
+
+    else:
+
+        results = st.session_state.database.similarity_search(
+            question,
+            k=3
+        )
+
+        context = ""
+
+        for result in results:
+            context += result.page_content + "\n"
+
+        history = ""
+
+        for chat in st.session_state.chat_history:
+
+            history += (
+                "User: "
+                + chat["question"]
+                + "\nAssistant: "
+                + chat["answer"]
+                + "\n"
+            )
+
+        prompt = f"""
+
 You are a helpful PDF assistant.
 
-Use only the given context to answer.
+Use only the context to answer.
 
 Previous conversation:
-{history_text}
 
+{history}
 
 Context:
+
 {context}
 
-
 Question:
+
 {question}
+
 """
+        response = llm.invoke(prompt)
+
+        answer = response.content
+
+        st.session_state.chat_history.append(
+            {
+                "question": question,
+                "answer": answer
+            }
+        )
+
+        st.write("### Answer")
+
+        st.write(answer)
+
+# Display chat history
+
+if st.session_state.chat_history:
+
+    st.write("## Conversation History")
 
 
-    response = llm.invoke(prompt)
+    for chat in st.session_state.chat_history:
 
+        st.write(
+            "👤 User:",
+            chat["question"]
+        )
 
-    answer = response.content
-
-
-    chat_history.append(
-        {
-            "question": question,
-            "answer": answer
-        }
-    )
-
-
-    return answer
-
-
-
-# Gradio Interface
-
-
-with gr.Blocks() as app:
-
-    gr.Markdown(
-        "# PDF Question Answering Assistant"
-    )
-
-
-    pdf = gr.File(
-        label="Upload PDF",
-        type="filepath"
-    )
-
-
-    process_button = gr.Button(
-        "Process PDF"
-    )
-
-
-    status = gr.Textbox(
-        label="Status"
-    )
-
-
-    process_button.click(
-        process_pdf,
-        inputs=pdf,
-        outputs=status
-    )
-
-
-    question = gr.Textbox(
-        label="Ask Question"
-    )
-
-
-    answer = gr.Textbox(
-        label="Answer"
-    )
-
-
-    ask_button = gr.Button(
-        "Ask"
-    )
-
-
-    ask_button.click(
-        ask_question,
-        inputs=question,
-        outputs=answer
-    )
-
-
-app.launch()
+        st.write(
+            "Assistant:",
+            chat["answer"]
+        )
